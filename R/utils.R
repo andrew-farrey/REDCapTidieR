@@ -201,6 +201,19 @@ parse_labels <- function(string, return_vector = FALSE, return_stripped_text_fla
     )
   }
 
+  repaired <- repair_redcap_choice_string(string)
+  string <- repaired$string
+
+  if (isTRUE(repaired$repaired)) {
+    cli_warn(
+      c(
+        "!" = "Applied conservative formatting repairs to a `select_choices_or_calculations` field before parsing.",
+        "i" = "This usually indicates malformed REDCap metadata such as repeated `|` separators or missing spacing after a separator."
+      ),
+      class = c("choice_string_repaired", "REDCapTidieR_cond")
+    )
+  }
+
   out <- string %>%
     strsplit("\\|") %>% # Split by "|"
     lapply(trimws) # Trim trailing and leading whitespace in list elements
@@ -272,6 +285,24 @@ parse_labels <- function(string, return_vector = FALSE, return_stripped_text_fla
   }
 
   out
+}
+
+repair_redcap_choice_string <- function(string) {
+  if (is.na(string) || !nzchar(trimws(string))) {
+    return(list(string = string, repaired = FALSE))
+  }
+
+  original <- string
+  repaired <- string
+
+  repaired <- gsub("\\|\\s*([0-9]+)\\s*,", "| \\1,", repaired, perl = TRUE)
+  repaired <- gsub("\\|\\s*\\|+", " | ", repaired, perl = TRUE)
+  repaired <- trimws(repaired)
+
+  list(
+    string = repaired,
+    repaired = !identical(original, repaired)
+  )
 }
 
 #' @title
